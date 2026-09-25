@@ -4,7 +4,10 @@ import { app } from "./index";
 describe("Elysia app", () => {
   it("GET / returns message", async () => {
     const res = await app.handle(new Request("http://localhost/"));
-    const body = await res.json();
-    expect(body.message).toBe("Hello from Elysia 🚀");
+
+    // res.json() အစား res.text() သုံးပါ
+    const body = await res.text();
+
+    expect(body).toBe("Hello from Elysia 🚀");
   });
 });
