@@ -27,7 +27,7 @@ jobs:
       - name: Run tests
         run: bun test
 
-  # ============ 2) Build & Push Docker ============
+  # ============ 2 Build & Push Docker ============
   build-and-push:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -69,23 +69,39 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ============ 3) CD: Deploy (optional) ============
+  # ============ 3 CD: Deploy (optional) ============
   deploy:
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Deploy to server via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            echo "${{ secrets.GITHUB_TOKEN }}" | \
-              docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ghcr.io/${{ github.repository }}:latest
-            docker stop elysia-app || true
-            docker rm elysia-app || true
-            docker run -d --name elysia-app -p 3000:3000 --restart unless-stopped \
-              ghcr.io/${{ github.repository }}:latest
+      - name: Deploy locally
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker pull ghcr.io/${{ github.repository }}:latest
+          docker stop cicd-app || true
+          docker rm cicd-app || true
+          docker run -d --name cicd-app -p 3000:3000 --restart unless-stopped \
+            ghcr.io/${{ github.repository }}:latest
+
+  # deploy:
+  #   needs: build-and-push
+  #   # runs-on: ubuntu-latest
+  #   runs-on: self-hosted
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - name: Deploy
+  #       uses: appleboy/ssh-action@v1.0.3
+  #       with:
+  #         host: ${{ secrets.SSH_HOST }}
+  #         username: ${{ secrets.SSH_USER }}
+  #         key: ${{ secrets.SSH_KEY }}
+  #         script: |
+  #           echo "${{ secrets.GITHUB_TOKEN }}" | \
+  #             docker login ghcr.io -u ${{ github.actor }} --password-stdin
+  #           docker pull ghcr.io/${{ github.repository }}:latest
+  #           docker stop cicd-app || true
+  #           docker rm cicd-app || true
+  #           docker run -d --name cicd-app -p 3000:3000 --restart unless-stopped \
+  #             ghcr.io/${{ github.repository }}:latest
